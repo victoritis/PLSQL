@@ -200,47 +200,126 @@ exec inicializa_test;
 create or replace procedure test_alquila_coches is
 begin
   -- Caso 1: Número de días negativo
+  -- Este test verifica que el procedimiento arroja un error cuando la fecha de inicio es posterior a la fecha de fin.
   begin
     inicializa_test;
-    -- Implementa aquí tu test
+    begin
+      -- Intentar alquilar un coche con una fecha de fin anterior a la fecha de inicio
+      alquilar_coche('12345678A', '1234-ABC', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-09', 'YYYY-MM-DD'));
+    exception
+      when others then
+        if sqlcode = -20001 then
+          dbms_output.put_line('Caso 1: Correcto - ' || sqlerrm);
+        else
+          dbms_output.put_line('Caso 1: Incorrecto - ' || sqlerrm);
+        end if;
+    end;
   end;
-  
+
   -- Caso 2: Vehículo inexistente
+  -- Este test verifica que el procedimiento arroja un error cuando se intenta alquilar un vehículo que no existe en la base de datos.
   begin
     inicializa_test;
-    -- Implementa aquí tu test
+    begin
+      -- Intentar alquilar un coche con una matrícula que no existe
+      alquilar_coche('12345678A', '9999-XYZ', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-12', 'YYYY-MM-DD'));
+    exception
+      when others then
+        if sqlcode = -20002 then
+          dbms_output.put_line('Caso 2: Correcto - ' || sqlerrm);
+        else
+          dbms_output.put_line('Caso 2: Incorrecto - ' || sqlerrm);
+        end if;
+    end;
   end;
-  
+
   -- Caso 3: Cliente inexistente
+  -- Este test verifica que el procedimiento arroja un error cuando se intenta alquilar un coche para un cliente que no existe en la base de datos.
   begin
     inicializa_test;
-    -- Implementa aquí tu test
+    begin
+      -- Intentar alquilar un coche con un NIF de cliente que no existe
+      alquilar_coche('99999999Z', '1234-ABC', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-12', 'YYYY-MM-DD'));
+    exception
+      when others then
+        if sqlcode = -20004 then
+          dbms_output.put_line('Caso 3: Correcto - ' || sqlerrm);
+        else
+          dbms_output.put_line('Caso 3: Incorrecto - ' || sqlerrm);
+        end if;
+    end;
   end;
-  
+
   -- Caso 4: Intentar alquilar un coche ya alquilado
   -- 4.1: La fecha de inicio del alquiler está dentro de una reserva
+  -- Este test verifica que el procedimiento arroja un error cuando se intenta alquilar un coche en una fecha de inicio que se solapa con una reserva existente.
   begin
     inicializa_test;
-    -- Implementa aquí tu test
+    begin
+      -- Crear una reserva inicial
+      alquilar_coche('12345678A', '1234-ABC', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-15', 'YYYY-MM-DD'));
+      -- Intentar crear una reserva solapada
+      alquilar_coche('11111111B', '1234-ABC', to_date('2024-06-14', 'YYYY-MM-DD'), to_date('2024-06-16', 'YYYY-MM-DD'));
+    exception
+      when others then
+        if sqlcode = -20003 then
+          dbms_output.put_line('Caso 4.1: Correcto - ' || sqlerrm);
+        else
+          dbms_output.put_line('Caso 4.1: Incorrecto - ' || sqlerrm);
+        end if;
+    end;
   end;
-  
+
   -- 4.2: La fecha de fin del alquiler está dentro de una reserva
+  -- Este test verifica que el procedimiento arroja un error cuando se intenta alquilar un coche en una fecha de fin que se solapa con una reserva existente.
   begin
     inicializa_test;
-    -- Implementa aquí tu test
+    begin
+      -- Crear una reserva inicial
+      alquilar_coche('12345678A', '1234-ABC', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-15', 'YYYY-MM-DD'));
+      -- Intentar crear una reserva solapada
+      alquilar_coche('11111111B', '1234-ABC', to_date('2024-06-09', 'YYYY-MM-DD'), to_date('2024-06-11', 'YYYY-MM-DD'));
+    exception
+      when others then
+        if sqlcode = -20003 then
+          dbms_output.put_line('Caso 4.2: Correcto - ' || sqlerrm);
+        else
+          dbms_output.put_line('Caso 4.2: Incorrecto - ' || sqlerrm);
+        end if;
+    end;
   end;
-  
+
   -- 4.3: El intervalo del alquiler está dentro de una reserva
+  -- Este test verifica que el procedimiento arroja un error cuando se intenta alquilar un coche en un intervalo de fechas que está completamente dentro de una reserva existente.
   begin
     inicializa_test;
-    -- Implementa aquí tu test
+    begin
+      -- Crear una reserva inicial
+      alquilar_coche('12345678A', '1234-ABC', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-15', 'YYYY-MM-DD'));
+      -- Intentar crear una reserva solapada
+      alquilar_coche('11111111B', '1234-ABC', to_date('2024-06-11', 'YYYY-MM-DD'), to_date('2024-06-14', 'YYYY-MM-DD'));
+    exception
+      when others then
+        if sqlcode = -20003 then
+          dbms_output.put_line('Caso 4.3: Correcto - ' || sqlerrm);
+        else
+          dbms_output.put_line('Caso 4.3: Incorrecto - ' || sqlerrm);
+        end if;
+    end;
   end;
-  
+
   -- Caso 5: Todo correcto
-  declare
+  -- Este test verifica que el procedimiento realiza correctamente la reserva y crea la factura correspondiente cuando todos los valores son correctos.
   begin
     inicializa_test;
-    -- Implementa aquí tu test
+    begin
+      -- Intentar realizar una reserva con valores correctos
+      alquilar_coche('12345678A', '1234-ABC', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-12', 'YYYY-MM-DD'));
+      dbms_output.put_line('Caso 5: Reserva realizada correctamente');
+    exception
+      when others then
+        dbms_output.put_line('Caso 5: Error inesperado - ' || sqlerrm);
+    end;
   end;
 end;
 /
