@@ -66,6 +66,7 @@ create or replace procedure alquilar_coche(
 ) is
   v_precio_dia modelos.precio_cada_dia%type;
   v_nombre_modelo modelos.nombre%type;
+  v_count integer;
 begin
   -- Comprobar si la fecha de inicio no es posterior a la fecha fin
   if arg_fecha_ini > arg_fecha_fin then
@@ -79,7 +80,7 @@ begin
     from vehiculos v
     join modelos m on v.id_modelo = m.id_modelo
     where v.matricula = arg_matricula
-    for update of v.id_modelo;
+    for update of v.matricula;
 
     -- Si no se encuentra el vehículo, lanzar error
     exception
@@ -87,6 +88,22 @@ begin
         raise_application_error(-20002, 'Vehiculo inexistente.');
   end;
   
+  -- Comprobar si ya existe una reserva solapada para el vehículo
+  select count(*)
+  into v_count
+  from reservas
+  where matricula = arg_matricula
+    and (
+      (arg_fecha_ini between fecha_ini and fecha_fin) or
+      (arg_fecha_fin between fecha_ini and fecha_fin) or
+      (fecha_ini between arg_fecha_ini and arg_fecha_fin) or
+      (fecha_fin between arg_fecha_ini and arg_fecha_fin)
+    );
+
+  if v_count > 0 then
+    raise_application_error(-20003, 'El vehículo no está disponible para esas fechas.');
+  end if;
+
   -- Aquí irán los siguientes pasos
 end;
 /
