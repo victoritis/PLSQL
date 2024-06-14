@@ -67,6 +67,8 @@ create or replace procedure alquilar_coche(
   v_precio_dia modelos.precio_cada_dia%type;
   v_nombre_modelo modelos.nombre%type;
   v_count integer;
+  v_n_dias integer;
+  v_importe numeric(8, 2);
 begin
   -- Comprobar si la fecha de inicio no es posterior a la fecha fin
   if arg_fecha_ini > arg_fecha_fin then
@@ -114,10 +116,24 @@ begin
       when no_data_found then
         raise_application_error(-20004, 'Cliente inexistente.');
   end;
-  
+
+  -- Calcular el número de días y el importe
+  v_n_dias := arg_fecha_fin - arg_fecha_ini;
+  v_importe := v_n_dias * v_precio_dia;
+
+  -- Crear la factura
+  insert into facturas(nroFactura, importe, cliente)
+  values (seq_num_fact.nextval, v_importe, arg_NIF_cliente);
+
+  -- Crear la línea de factura
+  insert into lineas_factura(nroFactura, concepto, importe)
+  values (seq_num_fact.currval, v_n_dias || ' días de alquiler vehículo modelo ' || v_nombre_modelo, v_importe);
+
   -- Aquí irán los siguientes pasos
 end;
 /
+
+
 
 -- Procedimiento para resetear secuencias
 create or replace procedure reset_seq(p_seq_name varchar) is
