@@ -69,6 +69,7 @@ create or replace procedure alquilar_coche(
   v_count integer;
   v_n_dias integer;
   v_importe numeric(8, 2);
+  v_cliente_count integer;
 begin
   -- Comprobar si la fecha de inicio no es posterior a la fecha fin
   if arg_fecha_ini > arg_fecha_fin then
@@ -106,16 +107,19 @@ begin
     raise_application_error(-20003, 'El vehículo no está disponible para esas fechas.');
   end if;
 
-  -- Insertar la reserva
-  begin
-    insert into reservas(idReserva, cliente, matricula, fecha_ini, fecha_fin)
-    values (seq_reservas.nextval, arg_NIF_cliente, arg_matricula, arg_fecha_ini, arg_fecha_fin);
+  -- Validar la existencia del cliente
+  select count(*)
+  into v_cliente_count
+  from clientes
+  where NIF = arg_NIF_cliente;
 
-    -- Si el cliente no existe, lanzar error
-    exception
-      when no_data_found then
-        raise_application_error(-20004, 'Cliente inexistente.');
-  end;
+  if v_cliente_count = 0 then
+    raise_application_error(-20004, 'Cliente inexistente.');
+  end if;
+
+  -- Insertar la reserva
+  insert into reservas(idReserva, cliente, matricula, fecha_ini, fecha_fin)
+  values (seq_reservas.nextval, arg_NIF_cliente, arg_matricula, arg_fecha_ini, arg_fecha_fin);
 
   -- Calcular el número de días y el importe
   v_n_dias := arg_fecha_fin - arg_fecha_ini;
