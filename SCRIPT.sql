@@ -58,18 +58,34 @@ create table lineas_factura(
 );
 
 -- Procedimiento para alquilar un coche
--- Cambio introducido: Definición del procedimiento 'alquilar' y primera comprobación
-create or replace procedure alquilar(
+create or replace procedure alquilar_coche(
   arg_NIF_cliente varchar,
   arg_matricula varchar,
   arg_fecha_ini date,
   arg_fecha_fin date
 ) is
+  v_precio_dia modelos.precio_cada_dia%type;
+  v_nombre_modelo modelos.nombre%type;
 begin
   -- Comprobar si la fecha de inicio no es posterior a la fecha fin
   if arg_fecha_ini > arg_fecha_fin then
     raise_application_error(-20001, 'No pueden realizarse alquileres por períodos inferiores a 1 día');
   end if;
+
+  -- Seleccionar el vehículo y bloquearlo
+  begin
+    select m.precio_cada_dia, m.nombre
+    into v_precio_dia, v_nombre_modelo
+    from vehiculos v
+    join modelos m on v.id_modelo = m.id_modelo
+    where v.matricula = arg_matricula
+    for update of v.id_modelo;
+
+    -- Si no se encuentra el vehículo, lanzar error
+    exception
+      when no_data_found then
+        raise_application_error(-20002, 'Vehiculo inexistente.');
+  end;
   
   -- Aquí irán los siguientes pasos
 end;
