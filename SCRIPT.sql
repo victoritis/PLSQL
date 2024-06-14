@@ -129,6 +129,10 @@ begin
   insert into lineas_factura(nroFactura, concepto, importe)
   values (seq_num_fact.currval, v_n_dias || ' días de alquiler vehículo modelo ' || v_nombre_modelo, v_importe);
 
+end;
+/
+
+
     -- P6a: ¿Por qué crees que se hace la recomendación del paso 2?
     -- La recomendación del paso 2 es crucial para asegurar que estamos trabajando con los datos correctos y que estamos bloqueando el recurso adecuado. En este caso, necesitamos bloquear el vehículo específico que se va a alquilar para evitar que otros procesos puedan realizar operaciones concurrentes sobre el mismo vehículo. Esto evita condiciones de carrera y garantiza que el vehículo esté disponible para el cliente que realiza la reserva. 
     -- Cuando realizamos una operación de alquiler, es fundamental que el vehículo en cuestión no pueda ser reservado por otro cliente simultáneamente. Al usar la cláusula FOR UPDATE en la consulta, bloqueamos el registro del vehículo, lo que significa que cualquier intento de modificación o reserva del mismo vehículo por otra transacción será bloqueado hasta que la transacción actual se complete. Esto asegura que no haya conflictos ni inconsistencias en la base de datos.
@@ -151,8 +155,6 @@ begin
     -- Tercero, se emplean bloqueos (FOR UPDATE) para asegurar la integridad de los datos durante la transacción, evitando condiciones de carrera y garantizando que los datos permanecen consistentes incluso en entornos concurrentes.
     -- Esta estrategia defensiva asegura que el sistema sea robusto y fiable, anticipando y manejando errores de manera controlada, lo que facilita el mantenimiento y mejora la experiencia del usuario.
 
-end;
-/
 
 -- Procedimiento para resetear secuencias
 create or replace procedure reset_seq(p_seq_name varchar) is
