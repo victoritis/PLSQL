@@ -52,7 +52,7 @@ create table facturas(
 
 create table lineas_factura(
   nroFactura integer references facturas,
-  concepto char(40),
+  concepto char(60),
   importe numeric(7, 2),
   primary key (nroFactura, concepto)
 );
