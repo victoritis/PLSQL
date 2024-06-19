@@ -143,7 +143,7 @@ end;
     -- Sin esta medida, podríamos enfrentarnos a situaciones donde múltiples clientes intentan reservar el mismo vehículo al mismo tiempo, lo que podría resultar en múltiples reservas conflictivas y datos corruptos. Por lo tanto, esta recomendación es una práctica estándar para manejar la concurrencia y mantener la integridad de los datos en aplicaciones de bases de datos.
 
     -- P6b: El resultado de la SELECT del paso 4, ¿sigue siendo fiable en el paso 5?, ¿por qué?
-    -- Sí, el resultado de la SELECT del paso 4 sigue siendo fiable en el paso 5. Esto se debe a que la transacción ha bloqueado el registro del vehículo desde el paso 2 con la cláusula FOR UPDATE. Este bloqueo garantiza que ningún otro proceso pueda modificar el estado del vehículo mientras la transacción actual está en curso. 
+    -- Sí, el resultado de la SELECT del paso 4 sigue siendo fiable en el paso 5. Esto es porque la transacción ha bloqueado el registro del vehículo desde el paso 2 con la cláusula FOR UPDATE. Este bloqueo garantiza que ningún otro proceso pueda modificar el estado del vehículo mientras la transacción actual está en curso.
     -- En términos de concurrencia, el bloqueo aplicado en el paso 2 asegura que el estado del vehículo y cualquier reserva existente no puedan ser alterados por otras transacciones hasta que la transacción actual se complete. Así, cuando llegamos al paso 5, podemos estar seguros de que los datos que estamos utilizando son coherentes y no han sido modificados por otras operaciones concurrentes.
     -- Este enfoque asegura que cualquier decisión basada en el estado del vehículo y sus reservas en el paso 4 sigue siendo válida y precisa en el paso 5, proporcionando una capa adicional de seguridad y precisión en nuestras operaciones de base de datos.
 
@@ -161,6 +161,7 @@ end;
 
 
 -- Procedimiento para resetear secuencias
+--From https://stackoverflow.com/questions/51470/how-do-i-reset-a-sequence-in-oracle
 create or replace procedure reset_seq(p_seq_name varchar) is
   l_val number;
 begin
@@ -205,7 +206,21 @@ exec inicializa_test;
 -- Procedimiento de pruebas
 create or replace procedure test_alquila_coches is
 begin
-  -- Caso 1: Número de días negativo
+  -- Caso 1: Todo correcto
+  -- Este test verifica que el procedimiento realiza correctamente la reserva y crea la factura correspondiente cuando todos los valores son correctos.
+  begin
+    inicializa_test;
+    begin
+      -- Intentar realizar una reserva con valores correctos
+      alquilar_coche('12345678A', '1234-ABC', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-12', 'YYYY-MM-DD'));
+      dbms_output.put_line('Caso 1: Reserva realizada correctamente');
+    exception
+      when others then
+        dbms_output.put_line('Caso 1: Error inesperado - ' || sqlerrm);
+    end;
+  end;
+
+  -- Caso 2: Número de días negativo
   -- Este test verifica que el procedimiento arroja un error cuando la fecha de inicio es posterior a la fecha de fin.
   begin
     inicializa_test;
@@ -215,14 +230,14 @@ begin
     exception
       when others then
         if sqlcode = -20001 then
-          dbms_output.put_line('Caso 1: Correcto - ' || sqlerrm);
+          dbms_output.put_line('Caso 2: Correcto - ' || sqlerrm);
         else
-          dbms_output.put_line('Caso 1: Incorrecto - ' || sqlerrm);
+          dbms_output.put_line('Caso 2: Incorrecto - ' || sqlerrm);
         end if;
     end;
   end;
 
-  -- Caso 2: Vehículo inexistente
+  -- Caso 3: Vehículo inexistente
   -- Este test verifica que el procedimiento arroja un error cuando se intenta alquilar un vehículo que no existe en la base de datos.
   begin
     inicializa_test;
@@ -232,23 +247,6 @@ begin
     exception
       when others then
         if sqlcode = -20002 then
-          dbms_output.put_line('Caso 2: Correcto - ' || sqlerrm);
-        else
-          dbms_output.put_line('Caso 2: Incorrecto - ' || sqlerrm);
-        end if;
-    end;
-  end;
-
-  -- Caso 3: Cliente inexistente
-  -- Este test verifica que el procedimiento arroja un error cuando se intenta alquilar un coche para un cliente que no existe en la base de datos.
-  begin
-    inicializa_test;
-    begin
-      -- Intentar alquilar un coche con un NIF de cliente que no existe
-      alquilar_coche('99999999Z', '1234-ABC', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-12', 'YYYY-MM-DD'));
-    exception
-      when others then
-        if sqlcode = -20004 then
           dbms_output.put_line('Caso 3: Correcto - ' || sqlerrm);
         else
           dbms_output.put_line('Caso 3: Incorrecto - ' || sqlerrm);
@@ -314,19 +312,24 @@ begin
     end;
   end;
 
-  -- Caso 5: Todo correcto
-  -- Este test verifica que el procedimiento realiza correctamente la reserva y crea la factura correspondiente cuando todos los valores son correctos.
+  -- Caso 5: Cliente inexistente
+  -- Este test verifica que el procedimiento arroja un error cuando se intenta alquilar un coche para un cliente que no existe en la base de datos.
   begin
     inicializa_test;
     begin
-      -- Intentar realizar una reserva con valores correctos
-      alquilar_coche('12345678A', '1234-ABC', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-12', 'YYYY-MM-DD'));
-      dbms_output.put_line('Caso 5: Reserva realizada correctamente');
+      -- Intentar alquilar un coche con un NIF de cliente que no existe
+      alquilar_coche('99999999Z', '1234-ABC', to_date('2024-06-10', 'YYYY-MM-DD'), to_date('2024-06-12', 'YYYY-MM-DD'));
     exception
       when others then
-        dbms_output.put_line('Caso 5: Error inesperado - ' || sqlerrm);
+        if sqlcode = -20004 then
+          dbms_output.put_line('Caso 5: Correcto - ' || sqlerrm);
+        else
+          dbms_output.put_line('Caso 5: Incorrecto - ' || sqlerrm);
+        end if;
     end;
   end;
+
+
 end;
 /
 
