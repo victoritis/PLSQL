@@ -1,3 +1,6 @@
+--AUTOR: VICTOR GONZALEZ DEL CAMPO vgd1005@alu.ubu.es
+--REPOSITORIO: https://github.com/victoritis/PLSQL.git
+
 -- Eliminación de tablas y secuencias existentes
 drop table modelos cascade constraints;
 drop table vehiculos cascade constraints;
@@ -57,7 +60,24 @@ create table lineas_factura(
   primary key (nroFactura, concepto)
 );
 
--- Procedimiento para alquilar un coche
+/*
+ * Procedimiento: alquilar_coche
+ * Descripción: Este procedimiento gestiona el alquiler de un coche por parte de un cliente.
+ *              Verifica que el cliente y el coche existen, que el coche está disponible para las fechas dadas,
+ *              calcula el importe del alquiler y genera la correspondiente factura.
+ * Argumentos:
+ *   - arg_NIF_cliente: NIF del cliente que realiza el alquiler.
+ *   - arg_matricula: Matrícula del coche que se desea alquilar.
+ *   - arg_fecha_ini: Fecha de inicio del alquiler.
+ *   - arg_fecha_fin: Fecha de fin del alquiler.
+ * Variables:
+ *   - v_precio_dia: Precio por día del modelo del coche.
+ *   - v_nombre_modelo: Nombre del modelo del coche.
+ *   - v_count: Contador para verificar la disponibilidad del coche.
+ *   - v_n_dias: Número de días de alquiler.
+ *   - v_importe: Importe total del alquiler.
+ *   - v_cliente_count: Contador para verificar la existencia del cliente.
+ */
 create or replace procedure alquilar_coche(
   arg_NIF_cliente varchar,
   arg_matricula varchar,
@@ -74,64 +94,66 @@ begin
   -- Comprobar si la fecha de inicio no es posterior a la fecha fin
   if arg_fecha_ini > arg_fecha_fin then
     raise_application_error(-20001, 'No pueden realizarse alquileres por períodos inferiores a 1 día');
-  end if;
+end if;
 
   -- Seleccionar el vehículo y bloquearlo
-  begin
-    select m.precio_cada_dia, m.nombre
-    into v_precio_dia, v_nombre_modelo
-    from vehiculos v
-    join modelos m on v.id_modelo = m.id_modelo
-    where v.matricula = arg_matricula
+begin
+select m.precio_cada_dia, m.nombre
+into v_precio_dia, v_nombre_modelo
+from vehiculos v
+         join modelos m on v.id_modelo = m.id_modelo
+where v.matricula = arg_matricula
     for update of v.matricula;
 
-    -- Si no se encuentra el vehículo, lanzar error
-    exception
+-- Si no se encuentra el vehículo, lanzar error
+exception
       when no_data_found then
         raise_application_error(-20002, 'Vehiculo inexistente.');
-  end;
-  
+end;
+
   -- Comprobar si ya existe una reserva solapada para el vehículo
-  select count(*)
-  into v_count
-  from reservas
-  where matricula = arg_matricula
-    and (
-      (arg_fecha_ini between fecha_ini and fecha_fin) or
-      (arg_fecha_fin between fecha_ini and fecha_fin) or
-      (fecha_ini between arg_fecha_ini and arg_fecha_fin) or
-      (fecha_fin between arg_fecha_ini and arg_fecha_fin)
+select count(*)
+into v_count
+from reservas
+where matricula = arg_matricula
+  and (
+        (arg_fecha_ini between fecha_ini and fecha_fin) or
+        (arg_fecha_fin between fecha_ini and fecha_fin) or
+        (fecha_ini between arg_fecha_ini and arg_fecha_fin) or
+        (fecha_fin between arg_fecha_ini and arg_fecha_fin)
     );
 
-  if v_count > 0 then
+-- Si el coche ya está reservado para esas fechas, lanzar error
+if v_count > 0 then
     raise_application_error(-20003, 'El vehículo no está disponible para esas fechas.');
-  end if;
+end if;
 
   -- Validar la existencia del cliente
-  select count(*)
-  into v_cliente_count
-  from clientes
-  where NIF = arg_NIF_cliente;
+select count(*)
+into v_cliente_count
+from clientes
+where NIF = arg_NIF_cliente;
 
-  if v_cliente_count = 0 then
+-- Si el cliente no existe, lanzar error
+if v_cliente_count = 0 then
     raise_application_error(-20004, 'Cliente inexistente.');
-  end if;
+end if;
 
   -- Insertar la reserva
-  insert into reservas(idReserva, cliente, matricula, fecha_ini, fecha_fin)
-  values (seq_reservas.nextval, arg_NIF_cliente, arg_matricula, arg_fecha_ini, arg_fecha_fin);
+insert into reservas(idReserva, cliente, matricula, fecha_ini, fecha_fin)
+values (seq_reservas.nextval, arg_NIF_cliente, arg_matricula, arg_fecha_ini, arg_fecha_fin);
 
-  -- Calcular el número de días y el importe
-  v_n_dias := arg_fecha_fin - arg_fecha_ini;
+-- Calcular el número de días y el importe
+v_n_dias := arg_fecha_fin - arg_fecha_ini;
   v_importe := v_n_dias * v_precio_dia;
 
   -- Crear la factura
-  insert into facturas(nroFactura, importe, cliente)
-  values (seq_num_fact.nextval, v_importe, arg_NIF_cliente);
+insert into facturas(nroFactura, importe, cliente)
+values (seq_num_fact.nextval, v_importe, arg_NIF_cliente);
 
-  -- Crear la línea de factura
-  insert into lineas_factura(nroFactura, concepto, importe)
-  values (seq_num_fact.currval, v_n_dias || ' días de alquiler vehículo modelo ' || v_nombre_modelo, v_importe);
+-- Crear la línea de factura
+insert into lineas_factura(nroFactura, concepto, importe)
+values (seq_num_fact.currval, v_n_dias || ' días de alquiler vehículo modelo ' || v_nombre_modelo, v_importe);
 
 end;
 /
